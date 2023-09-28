@@ -135,7 +135,7 @@ def tobs():
     session.close()
     return jsonify(tobs_list)
 
-# 5.Define a route for /api/v1.0/<start> and /api/v1.0/<start>/<end>
+# 5.Define a route for /api/v1.0/<start>/<end>
 @app.route("/api/v1.0/<start>/<end>")
 def Specified_date_range(start, end):
     # Create an SQLAlchemy engine and session to interact with your database
@@ -181,7 +181,55 @@ def Specified_date_range(start, end):
     session.close()
     return jsonify(temperature_dict)
 
+# 6.Define a route for /api/v1.0/<start>
+@app.route("/api/v1.0/<start>")
+def start_date(start):
+    # Create an SQLAlchemy engine and session to interact with your database
+    engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+    session = Session(engine)
 
+    # reflect an existing database into a new model
+    Base = automap_base()
+
+    # reflect the tables
+    Base.prepare(autoload_with=engine)
+
+    # View all of the classes that automap found
+    Base.classes.keys()
+
+    # Save references to each table
+    Measurement = Base.classes.measurement
+    
+    # Convert the user input into datetime objects 
+    start_date = dt.datetime.strptime(start, "%Y-%m-%d")
+    # Extract the most recent date from the database and convert it to a datetime object
+    most_recent_date=session.query(Measurement.date).order_by(Measurement.date.desc()).first()
+    end_date = dt.datetime.strptime(most_recent_date[0], "%Y-%m-%d")
+
+    # Check if the end date is before the start date
+    if end_date < start_date:
+        return jsonify({"error": "End date cannot be before the start date."})
+    
+    # calculate the lowest, highest, and average temperature for the specified dates
+    temperature_stats = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+    filter(Measurement.date.between(start_date, end_date)).all()
+
+    # Extract the temperature statistics values
+    min_temp, max_temp, avg_temp = temperature_stats[0]
+
+    # Create a dictionary to store the temperature statistics
+    temperature_dict = {
+    "start_date": start_date,
+    "End_date": end_date,
+    "min_temperature": min_temp,
+    "max_temperature": max_temp,
+    "avg_temperature": avg_temp
+    }
+    # Close the session to release resources
+    session.close()
+    return jsonify(temperature_dict)
+
+# def Specified_date_range(start=None, end=None)
 
 # 1. Define main behaviour
 if __name__ == "__main__":
